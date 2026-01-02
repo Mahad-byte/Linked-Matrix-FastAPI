@@ -23,7 +23,6 @@ for item in data:
 
     movies.append(
         {
-            "id": item.get("Id"),
             "name": title,
             "image": image_url,
             "release_date": release_date.strftime("%Y-%m-%d") if release_date else None,
@@ -51,7 +50,6 @@ for item in data_upcoming:
 
     movies_upcoming.append(
         {
-            "id": item.get("Id"),
             "name": title,
             "image": image_url,
             "release_date": release_date.strftime("%Y-%m-%d") if release_date else None,
@@ -62,21 +60,37 @@ for item in data_upcoming:
 WEBHOOK_URL = "https://discordapp.com/api/webhooks/1453007866368884759/uSDUHCJ-5VyF8UAeVWYiZ3cugRfGU42OAK9sNCchkiroNBD7pa1K2iV38GEZ6quawe4N"
 
 
-def send_to_discord(webhook_url: str, now_data: list, upcoming_data: list):
+def build_embeds(payload):
+    embeds = []
+
+    for section, movies in payload.items():
+        for movie in movies:
+            embed = {
+                "title": f"**{movie['name']}**",
+                "description": f"Release: **{movie['release_date']}**",
+                "image": {"url": movie["image"]},
+                "footer": {"text": f"{section.replace('_', ' ').title()}"}
+            }
+            embeds.append(embed)
+
+    return embeds
+
+
+def send_to_discord(webhook_url: str, movies: list, movies_upcoming: list):
     payload = {
-        "now_showing": now_data[:2],
-        "upcoming": upcoming_data[:2],
+        "now_showing": movies[:2],
+        "upcoming": movies_upcoming[:2],
     }
 
-    content = "```json\n" + json.dumps(payload, indent=2) + "\n```"
 
-    resp = requests.post(webhook_url, json={"content": content})
+    resp = requests.post(
+        webhook_url, json={"embeds": build_embeds(payload)}
+    )
     print("Discord webhook status:", resp.status_code)
     if resp.status_code >= 400:
         print("Response:", resp.text)
     return resp
-    
 
 
 if __name__ == "__main__":
-    send_to_discord(WEBHOOK_URL, data, data_upcoming)
+    send_to_discord(WEBHOOK_URL, movies, movies_upcoming)
