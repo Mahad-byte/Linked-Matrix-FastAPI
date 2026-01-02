@@ -2,8 +2,9 @@ from fastapi import APIRouter, status, Depends, HTTPException
 from models.users import User, Profile, Token
 from jwt.exceptions import InvalidTokenError
 from motor.motor_asyncio import AsyncIOMotorClient
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
-from utils.helpers import init_auth_helper
+from utils.helpers import auth_helper, create_notification
 from schemas.schema import RegisterSchema, LoginSchema, TokenSchema, ResponseSchema
 from datetime import datetime
 
@@ -11,7 +12,8 @@ from datetime import datetime
 router = APIRouter()
 uri = "mongodb+srv://mahadnaeem416_db_user:wFpdgJLsNZM3Kbzb@cluster0.3u9vrvy.mongodb.net/?appName=Cluster0"
 client = AsyncIOMotorClient(uri)
-auth_helper = init_auth_helper()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_user(payload: RegisterSchema):
@@ -33,6 +35,12 @@ async def register_user(payload: RegisterSchema):
             profile = Profile(user_id=user.id, role=payload.role, picture=None)
             await profile.insert()
 
+            await create_notification(
+                user=str(user.id),
+                text="User {user.email} account created",      
+            )
+
+
     return ResponseSchema(message="Success")
 
 
@@ -53,7 +61,7 @@ async def authenticate_user(payload: LoginSchema):
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
-async def logout_user(token: str = Depends(auth_helper.oauth2_scheme)):
+async def logout_user(token: str = Depends(oauth2_scheme)):
     token_doc = await Token.find_one(Token.access_token == token)
     if token_doc is None:
         raise HTTPException(

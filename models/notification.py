@@ -9,6 +9,6 @@ from models.users import User
 
 class Notification(Document):
     text: str
-    user: List[PydanticObjectId]
+    user: PydanticObjectId
     created_at: datetime
     mark_read: bool

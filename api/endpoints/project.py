@@ -1,22 +1,23 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, Request
 from beanie import PydanticObjectId
 
 from models.project import Project
 from models.users import User
 from schemas.schema import ResponseSchema, ProjectSchema
 from schemas.update_schema import ProjectUpdateSchema
-from utils.helpers import init_auth_helper, role
-from utils.enums import Role
+from utils.helpers import auth_helper, create_notification
+from utils.manager import manager_required
+
 
 router = APIRouter()
 
-auth_helper = init_auth_helper()
-
 
 @router.post("/projects", status_code=status.HTTP_201_CREATED)
-@role.required(Role.PM)
-async def create_project(payload: ProjectSchema, current_user: User):
-    project = Project(
+@manager_required
+async def create_project(
+    payload: ProjectSchema, current_user: User = Depends(auth_helper.get_current_user)
+):
+    project = Project(  
         title=payload.title,
         start_date=payload.start_date,
         end_date=payload.end_date,
@@ -24,6 +25,11 @@ async def create_project(payload: ProjectSchema, current_user: User):
         team_members=[],
     )
     await project.insert()
+
+    await create_notification(
+        user=str(current_user.id),
+        text="Project {project.title} created",      
+    )
     return ResponseSchema(message="Success")
 
 
@@ -50,8 +56,9 @@ async def get_project_with_id(
 
 
 @router.delete("/projects/{project_id}", status_code=status.HTTP_200_OK)
-@role.required(Role.PM)
-async def delete_project_with_id(project_id: PydanticObjectId, current_user: User = None):
+async def delete_project_with_id(
+    request: Request, project_id: PydanticObjectId
+):
     project = await Project.get(project_id)
     await project.delete()
     return ResponseSchema(message="Success")

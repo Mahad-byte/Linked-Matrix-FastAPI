@@ -2,6 +2,7 @@ from fastapi import APIRouter, status
 from beanie import PydanticObjectId
 from datetime import datetime
 
+from utils.helpers import create_notification
 from models.content import Comment
 from schemas.schema import ResponseSchema, CommentSchema
 from schemas.update_schema import CommentUpdateSchema
@@ -21,6 +22,10 @@ async def create_comment(payload: CommentSchema):
         task=payload.task,
     )
     await comment.insert()
+    await create_notification(
+        user=str(payload.author),
+        text="Task {task.title} created",      
+    )
     return ResponseSchema(message="Success")
 
 

@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 from database import init
 from api.router import api_router
 
+
+
+
 load_dotenv()
 
 app = FastAPI()
@@ -16,3 +19,6 @@ def root():
 async def app_init():
     await init()
     # await create_test()
+
+
+

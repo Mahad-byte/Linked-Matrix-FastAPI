@@ -1,14 +1,16 @@
 import jwt
 from pwdlib import PasswordHash
 from datetime import datetime, timedelta
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status
 from functools import wraps
-import inspect
 
-from models.users import User, Token, Profile
-from utils.enums import Role
+from models.notification import Notification
+from models.users import User, Token
 
+
+ # injects token in headers and send to get_current_user, does not hit /login API
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 class AuthHelper:
     def __init__(self, secret_key: str, algorithm: str, access_token_expiry: str):
@@ -16,7 +18,6 @@ class AuthHelper:
         self.algorithm = algorithm
         self.access_token_expiry = access_token_expiry
         self.hashed_password = PasswordHash.recommended()
-        self.oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
     def create_access_token(self, user_id: str) -> str:
         expire = datetime.utcnow() + timedelta(minutes=self.access_token_expiry)
@@ -31,7 +32,7 @@ class AuthHelper:
         return self.hashed_password.hash(password)
 
     async def get_current_user(
-        self, token: str = Depends(lambda self: self.oauth2_scheme)
+        self, token: str = Depends(oauth2_scheme),
     ) -> User:
         # First, check if token exists in token collection for the user_id
         try:
@@ -85,89 +86,13 @@ def init_auth_helper():
 
 # Default helper instance for convenient reuse
 auth_helper = init_auth_helper()
-
-
-def roles_required(*allowed_roles: Role):
-
-    async def _dependency(user: User = Depends(auth_helper.get_current_user)):
-        profile = await Profile.find_one(Profile.user_id == user.id)
-        if profile is None or profile.role not in allowed_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Operation not permitted",
-            )
-        return user
-
-    return Depends(_dependency)
-
-
-def pm_required():
-    return roles_required(Role.PM)
-
-
-class RoleChecker:
     
-    def __init__(self, auth_helper: AuthHelper):
-        self.auth_helper = auth_helper
 
-    def required(self, *allowed_roles: Role):
-        def decorator(func):
-            orig_sig = inspect.signature(func)
-
-            # Build a new signature that includes `request` (if not present) followed by
-            # the original parameters. Make `current_user` optional so FastAPI doesn't
-            # treat it as a required body field.
-            params = []
-            if "request" not in orig_sig.parameters:
-                params.append(
-                    inspect.Parameter(
-                        "request",
-                        inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                        annotation=Request,
-                    )
-                )
-
-            for name, param in orig_sig.parameters.items():
-                if name == "current_user" and param.default is inspect._empty:
-                    param = param.replace(default=None)
-                params.append(param)
-
-            wrapper_sig = inspect.Signature(parameters=params, return_annotation=orig_sig.return_annotation)
-
-            @wraps(func)
-            async def wrapper(request: Request, *args, **kwargs):
-                auth_header = request.headers.get("authorization")
-                if not auth_header:
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Missing authorization header",
-                    )
-
-                parts = auth_header.split()
-                token = parts[1] if len(parts) > 1 else parts[0]
-
-                user = await self.auth_helper.get_current_user(token=token)
-                profile = await Profile.find_one(Profile.user_id == user.id)
-                if profile is None or profile.role not in allowed_roles:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Operation not permitted",
-                    )
-
-                # Inject current_user and request into kwargs if the original function expects them
-                if "current_user" in orig_sig.parameters:
-                    kwargs["current_user"] = user
-                if "request" in orig_sig.parameters:
-                    kwargs["request"] = request
-
-                return await func(*args, **kwargs)
-
-            # Expose the constructed signature to FastAPI so it knows to provide Request
-            wrapper.__signature__ = wrapper_sig
-
-            return wrapper
-
-        return decorator
-
-
-role = RoleChecker(auth_helper)
+async def create_notification(*, user: str, text: str):
+    notification = Notification(
+        user=user,
+        text=text,
+        mark_read=False,
+        created_at=datetime.utcnow(),
+    )
+    await notification.insert()

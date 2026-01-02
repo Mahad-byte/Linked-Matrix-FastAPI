@@ -4,6 +4,7 @@ from beanie import PydanticObjectId
 from models.project import Tasks
 from schemas.schema import ResponseSchema, TaskSchema
 from schemas.update_schema import TaskUpdateSchema
+from utils.helpers import create_notification
 
 
 router = APIRouter()
@@ -15,6 +16,10 @@ async def create_task(payload: TaskSchema):
     task = Tasks(title=payload.title, description=payload.description, 
                       status=payload.status, project=payload.project, asignee=payload.asignee)
     await task.insert()
+    await create_notification(
+        user=str(payload.asignee),
+        text="Task {task.title} created",      
+    )
     return ResponseSchema(message="Success")
 
 

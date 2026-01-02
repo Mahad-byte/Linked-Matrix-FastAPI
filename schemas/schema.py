@@ -69,5 +69,4 @@ class CommentSchema(BaseModel):
 class NotificationCreateSchema(BaseModel):
     text: str
     user: List[PydanticObjectId]
-    created_at: datetime
     mark_read: bool
