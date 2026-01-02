@@ -5,7 +5,8 @@ from models.project import Project
 from models.users import User
 from schemas.schema import ResponseSchema, ProjectSchema
 from schemas.update_schema import ProjectUpdateSchema
-from utils.helpers import init_auth_helper
+from utils.helpers import init_auth_helper, role
+from utils.enums import Role
 
 router = APIRouter()
 
@@ -13,11 +14,8 @@ auth_helper = init_auth_helper()
 
 
 @router.post("/projects", status_code=status.HTTP_201_CREATED)
-async def create_project(
-    payload: ProjectSchema, current_user: User = Depends(auth_helper.get_current_user)
-):
-    print(payload)
-    print(current_user)
+@role.required(Role.PM)
+async def create_project(payload: ProjectSchema, current_user: User):
     project = Project(
         title=payload.title,
         start_date=payload.start_date,
@@ -52,7 +50,8 @@ async def get_project_with_id(
 
 
 @router.delete("/projects/{project_id}", status_code=status.HTTP_200_OK)
-async def delete_project_with_id(project_id: PydanticObjectId):
+@role.required(Role.PM)
+async def delete_project_with_id(project_id: PydanticObjectId, current_user: User = None):
     project = await Project.get(project_id)
     await project.delete()
     return ResponseSchema(message="Success")

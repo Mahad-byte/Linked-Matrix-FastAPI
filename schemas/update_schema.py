@@ -27,3 +27,12 @@ class DocumentUpdateSchema(BaseModel):
     file: Optional[str] = None
     version: Optional[int] = None
     project: Optional[List[PydanticObjectId]] = None
+
+
+class CommentUpdateSchema(BaseModel):
+    text: Optional[str] = None
+    description: Optional[str] = None
+    created_at: Optional[datetime] = None
+    author: Optional[List[PydanticObjectId]] = None
+    project: Optional[List[PydanticObjectId]] = None
+    task: Optional[List[PydanticObjectId]] = None

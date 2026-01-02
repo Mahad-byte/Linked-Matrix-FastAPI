@@ -2,13 +2,13 @@ from datetime import datetime
 from typing import List
 
 from pydantic import BaseModel
-from beanie import Document
+from beanie import Document, PydanticObjectId
 
 from models.users import User
 
 
 class Notification(Document):
     text: str
-    user: List[User]
+    user: List[PydanticObjectId]
     created_at: datetime
     mark_read: bool

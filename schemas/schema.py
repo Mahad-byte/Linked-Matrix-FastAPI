@@ -49,9 +49,25 @@ class TaskSchema(BaseModel):
     asignee: List[PydanticObjectId]
 
 
-class DocumentSchema:
+class DocumentSchema(BaseModel):
     name: str
-    description: str
-    file: str
+    description: Optional[str] = None
+    file: Optional[str] = None
     version: int
-    project: List[PydanticObjectId]
+    project: List[PydanticObjectId] = []
+
+
+class CommentSchema(BaseModel):
+    text: str
+    description: Optional[str] = None
+    created_at: datetime = datetime.utcnow()
+    author: List[PydanticObjectId]
+    project: List[PydanticObjectId] = []
+    task: List[PydanticObjectId] = []
+
+
+class NotificationCreateSchema(BaseModel):
+    text: str
+    user: List[PydanticObjectId]
+    created_at: datetime
+    mark_read: bool

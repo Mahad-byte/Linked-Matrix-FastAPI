@@ -1,12 +1,10 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
-from beanie import Document, PydanticObjectId
-
-from models.users import User
+from beanie import Document as BeanieDocument, PydanticObjectId
 
 
-class Document(Document):
+class Document(BeanieDocument):
     name: str
     description: str
     file: str
@@ -14,11 +12,11 @@ class Document(Document):
     project: List[PydanticObjectId]
 
 
-class Comment(Document):
+class Comment(BeanieDocument):
     text: str
-    description: str
-    created_at: datetime
-    author: List[User]
-    project: List[PydanticObjectId]
-    task: List[PydanticObjectId]
+    description: Optional[str] = None
+    created_at: datetime = datetime.utcnow()
+    author: List[PydanticObjectId]
+    project: List[PydanticObjectId] = []
+    task: List[PydanticObjectId] = []
 
