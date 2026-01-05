@@ -2,7 +2,6 @@ import requests
 from datetime import datetime
 import json
 
-
 now_showing_url = "https://cinestar.pk/Browsing/Home/NowShowing"
 response_now_showing = requests.get(now_showing_url)
 data = response_now_showing.json()
@@ -62,33 +61,44 @@ WEBHOOK_URL = "https://discordapp.com/api/webhooks/1453007866368884759/uSDUHCJ-5
 
 def build_embeds(payload):
     embeds = []
-
+    
     for section, movies in payload.items():
         for movie in movies:
             embed = {
                 "title": f"**{movie['name']}**",
                 "description": f"Release: **{movie['release_date']}**",
                 "image": {"url": movie["image"]},
-                "footer": {"text": f"{section.replace('_', ' ').title()}"}
+                "fields":[
+                    {"name": "Category", "value": f"**{section}**", "inline":True},
+                ],
+                "color":0x0099ff,
             }
             embeds.append(embed)
 
     return embeds
 
 
+def chunk_list(list, size):
+    for i in range(0, len(list), size): # 0-size, split 10
+        yield list[i:size+i]
+
+
 def send_to_discord(webhook_url: str, movies: list, movies_upcoming: list):
     payload = {
-        "now_showing": movies[:2],
-        "upcoming": movies_upcoming[:2],
+        "Now Showing": movies,
+        "Upcoming": movies_upcoming,
     }
-
-
-    resp = requests.post(
-        webhook_url, json={"embeds": build_embeds(payload)}
-    )
-    print("Discord webhook status:", resp.status_code)
-    if resp.status_code >= 400:
-        print("Response:", resp.text)
+    embeds = build_embeds(payload)
+    for chunk in chunk_list(embeds, 10):
+        resp = requests.post(
+            webhook_url,
+            json={"embeds": chunk}
+        )
+        print("Discord webhook status:", resp.status_code)
+        if resp.status_code >= 400:
+            print("Response:", resp.text)
+            break
+        
     return resp
 
 
