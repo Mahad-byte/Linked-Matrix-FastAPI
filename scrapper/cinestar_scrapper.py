@@ -62,9 +62,8 @@ def build_embeds(payload):
 
 
 def chunk_list(list, size):
-    for i in range(0, len(list), size): # 0-size, split 10
+    for i in range(0, len(list), size): # 0-size, step 10 [0:size:10]
         yield list[i:size+i]
-
 
 
 def send_to_discord(webhook_url: str, movies: list, movies_upcoming: list):
